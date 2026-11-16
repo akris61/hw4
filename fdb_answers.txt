@@ -1,0 +1,9 @@
+Q1: FDB splits them so reads and writes can scale on their own. The transaction side (Sequencer, Proxies, Resolvers, plus the LogServers) handles ordering, conflict checks, and making commits durable. The StorageServers just store the data and answer reads. So if you need more reads you add StorageServers, and if you need more writes you add Proxies, Resolvers, or LogServers.
+
+Q2: The Resolvers do it. It happens at commit time, after the Proxy gets a commit version from the Sequencer. Each Resolver keeps a list of recently written key ranges, and it checks if any key the transaction read was written between its read version and commit version. If there is a conflict the transaction is aborted.
+
+Q3: The read version tells the transaction which snapshot of the database to read from. The Sequencer gives a read version that is not less than any commit version already handed out, so the transaction sees all committed data. Since reads use MVCC at that version and writes are checked with OCC at commit, FDB gets strict serializability.
+
+Q4: Snapshot reads are not added to the transaction's read conflict ranges, so writes to those keys by other transactions won't make it abort. Normal reads are added, so they can cause an abort. I would use snapshot reads for things like background tasks or analytics where being a little stale is fine. I would use normal reads when the value decides what the transaction writes.
+
+Q5: In normal operation LogServers store the committed mutations and StorageServers pull them in the background. This means the transaction system doesn't hold any state that storage depends on. On recovery FDB just starts a new epoch with a new Sequencer, Proxies, Resolvers, and LogServers, and finds the Recovery Version from the old LogServers. The StorageServers keep pulling the log on their own, so there is no redo replay before accepting new transactions and it takes only a few seconds.
