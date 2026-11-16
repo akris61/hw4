@@ -9,13 +9,13 @@ spark = (
     .getOrCreate()
 )
 
-df = spark.read.csv("taxi_trips_clean.csv", header=True, inferSchema=True)
+taxi_df = spark.read.csv("taxi_trips_clean.csv", header=True, inferSchema=True)
 
-df = df.withColumn("fare_per_minute", df["fare"] / (df["trip_seconds"] / 60.0))
+taxi_df = taxi_df.withColumn("fare_per_minute", taxi_df["fare"] / (taxi_df["trip_seconds"] / 60.0))
 
-df.createOrReplaceTempView("trips")
+taxi_df.createOrReplaceTempView("trips")
 
-result = spark.sql("""
+company_summary = spark.sql("""
 SELECT company, COUNT(*) AS trip_count, ROUND(AVG(fare), 2) AS avg_fare,
 ROUND(AVG(fare_per_minute), 2) AS avg_fare_per_minute
 FROM trips
@@ -23,4 +23,4 @@ GROUP BY company
 ORDER BY trip_count DESC
 """)
 
-result.coalesce(1).write.mode("overwrite").json("processed_data")
+company_summary.coalesce(1).write.mode("overwrite").json("processed_data")
