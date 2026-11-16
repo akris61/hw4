@@ -11,7 +11,7 @@ python app.py
 
 Screenshot of processed_data after running preprocess.py:
 
-![processed_data](screenshots/processed_data.png)
+![processed_data](processed_data.png)
 
 Output from the part file:
 
