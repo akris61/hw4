@@ -23,4 +23,4 @@ GROUP BY company
 ORDER BY trip_count DESC
 """)
 
-result.write.mode("overwrite").json("processed_data/")
+result.write.json("processed_data/", mode="overwrite")

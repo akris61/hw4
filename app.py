@@ -58,7 +58,7 @@ def high_fare_trips():
         MATCH (d:Driver)-[t:TRIP]->(a:Area {area_id: $area_id})
         WHERE t.fare > $min_fare
         RETURN t.trip_id AS trip_id, t.fare AS fare, d.driver_id AS driver_id
-        ORDER BY fare DESC
+        ORDER BY fare DESC, trip_id
     """, area_id=area_id, min_fare=min_fare)
     trips = []
     for r in result:
@@ -75,7 +75,7 @@ def co_area_drivers():
         MATCH (d1:Driver {driver_id: $driver_id})-[:TRIP]->(a:Area)<-[:TRIP]-(d2:Driver)
         WHERE d1 <> d2
         RETURN d2.driver_id AS driver_id, count(DISTINCT a) AS shared_areas
-        ORDER BY shared_areas DESC
+        ORDER BY shared_areas DESC, driver_id
     """, driver_id=driver_id)
     drivers = []
     for r in result:
@@ -109,7 +109,7 @@ def area_stats():
     stats = df.groupBy("dropoff_area").agg(
         F.count("*").alias("trip_count"),
         F.round(F.avg("fare"), 2).alias("avg_fare"),
-        F.round(F.avg("trip_seconds"), 0).alias("avg_trip_seconds")
+        F.round(F.avg("trip_seconds"), 2).alias("avg_trip_seconds")
     ).collect()
 
     if len(stats) == 0:
@@ -117,7 +117,7 @@ def area_stats():
 
     row = stats[0]
     return jsonify({"area_id": area_id, "trip_count": row["trip_count"],
-                    "avg_fare": row["avg_fare"], "avg_trip_seconds": int(row["avg_trip_seconds"])})
+                    "avg_fare": row["avg_fare"], "avg_trip_seconds": row["avg_trip_seconds"]})
 
 
 @app.get("/top-pickup-areas")
@@ -144,7 +144,7 @@ def company_compare():
     rows = spark.sql("""
         SELECT company, COUNT(*) AS trip_count, ROUND(AVG(fare), 2) AS avg_fare,
         ROUND(AVG(fare_per_minute), 2) AS avg_fare_per_minute,
-        ROUND(AVG(trip_seconds), 0) AS avg_trip_seconds
+        ROUND(AVG(trip_seconds), 2) AS avg_trip_seconds
         FROM trips
         WHERE company IN ('""" + company1 + "', '" + company2 + """')
         GROUP BY company
@@ -165,7 +165,7 @@ def company_compare():
             "trip_count": r["trip_count"],
             "avg_fare": r["avg_fare"],
             "avg_fare_per_minute": r["avg_fare_per_minute"],
-            "avg_trip_seconds": int(r["avg_trip_seconds"])
+            "avg_trip_seconds": r["avg_trip_seconds"]
         })
     return jsonify({"comparison": comparison})
 
